@@ -1,0 +1,325 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local lp = Players.LocalPlayer
+
+-- 获取远程事件 (保持不变)
+local re = ReplicatedStorage
+	:WaitForChild("Knit")
+	:WaitForChild("Knit")
+	:WaitForChild("Services")
+	:WaitForChild("NanamiService")
+	:WaitForChild("RE")
+	:WaitForChild("RightActivated")
+
+local enabled = true
+local scriptFiring = false
+
+-- 原始 hook (保持不变)
+local orig
+orig = hookmetamethod(game, "__namecall", function(self, ...)
+	local method = getnamecallmethod()
+	if self == re and method == "FireServer" then
+		if enabled and not scriptFiring then
+			local arg1 = select(1, ...)
+			task.spawn(function()
+				local target = arg1
+				local delay = 0.71
+				if target and typeof(target) == "Instance" then
+					local h = target:FindFirstChildOfClass("Humanoid")
+					if h and h.Health < 80 then
+						delay = 0.53
+					end
+				end
+				task.wait(delay)
+				scriptFiring = true
+				re:FireServer(target)
+				scriptFiring = false
+			end)
+		end
+	end
+	return orig(self, ...)
+end)
+
+-- ================= 粉色主题 UI =================
+local gui = Instance.new("ScreenGui")
+gui.Name = "_XiaoZhaoHub"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = lp:WaitForChild("PlayerGui")
+
+-- 粉色主题颜色
+local theme = {
+	background = Color3.fromRGB(25, 18, 25),      -- 深紫粉背景
+	card = Color3.fromRGB(40, 25, 40),            -- 卡片深粉
+	accent = Color3.fromRGB(255, 105, 180),       -- 热粉色
+	accentLight = Color3.fromRGB(255, 140, 200),  -- 浅粉色
+	success = Color3.fromRGB(255, 120, 160),      -- 粉红成功色
+	danger = Color3.fromRGB(200, 60, 100),        -- 深粉红
+	text = Color3.fromRGB(255, 220, 240),         -- 粉白文字
+	textDim = Color3.fromRGB(200, 160, 190),      -- 淡粉灰
+	border = Color3.fromRGB(255, 100, 150)        -- 粉色边框
+}
+
+-- 主窗口尺寸
+local WIN_W = 240
+local WIN_H_FULL = 185
+local WIN_H_MIN = 38
+
+local win = Instance.new("Frame")
+win.Size = UDim2.new(0, WIN_W, 0, WIN_H_FULL)
+win.Position = UDim2.new(0, 30, 0.45, -WIN_H_FULL/2)
+win.BackgroundColor3 = theme.background
+win.BorderSizePixel = 0
+win.Active = true
+win.ClipsDescendants = true
+win.Parent = gui
+Instance.new("UICorner", win).CornerRadius = UDim.new(0, 12)
+
+-- 边框发光
+local stroke = Instance.new("UIStroke", win)
+stroke.Color = theme.border
+stroke.Thickness = 1.5
+stroke.Transparency = 0.3
+
+-- 标题栏
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 38)
+titleBar.BackgroundColor3 = theme.card
+titleBar.BorderSizePixel = 0
+titleBar.ZIndex = 2
+titleBar.Parent = win
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 12)
+
+-- 顶部圆角遮罩
+local topMask = Instance.new("Frame")
+topMask.Size = UDim2.new(1, 0, 1, 0)
+topMask.Position = UDim2.new(0, 0, 0, 0)
+topMask.BackgroundColor3 = theme.card
+topMask.BorderSizePixel = 0
+topMask.ZIndex = 1
+topMask.Parent = titleBar
+
+-- 标题文字 (小照hub)
+local titleTxt = Instance.new("TextLabel")
+titleTxt.Size = UDim2.new(1, -80, 1, 0)
+titleTxt.Position = UDim2.new(0, 12, 0, 0)
+titleTxt.BackgroundTransparency = 1
+titleTxt.Text = "🌸 小照hub · 七海自动7分线"
+titleTxt.TextColor3 = theme.text
+titleTxt.TextSize = 12
+titleTxt.Font = Enum.Font.GothamSemibold
+titleTxt.TextXAlignment = Enum.TextXAlignment.Left
+titleTxt.TextYAlignment = Enum.TextYAlignment.Center
+titleTxt.ZIndex = 3
+titleTxt.Parent = titleBar
+
+-- 状态指示器 (粉色爱心)
+local statusDot = Instance.new("Frame")
+statusDot.Size = UDim2.new(0, 10, 0, 10)
+statusDot.Position = UDim2.new(1, -35, 0.5, -5)
+statusDot.BackgroundColor3 = theme.success
+statusDot.BorderSizePixel = 0
+statusDot.ZIndex = 4
+statusDot.Parent = titleBar
+Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
+
+-- 按钮制作函数
+local function makeBtn(label, xOff, bgColor, textColor)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(0, 26, 0, 24)
+	b.Position = UDim2.new(1, xOff, 0.5, -12)
+	b.BackgroundColor3 = bgColor
+	b.Text = label
+	b.TextColor3 = textColor or Color3.fromRGB(255, 255, 255)
+	b.TextSize = 14
+	b.Font = Enum.Font.GothamBold
+	b.BorderSizePixel = 0
+	b.AutoButtonColor = false
+	b.ZIndex = 4
+	b.Parent = titleBar
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+	
+	b.MouseEnter:Connect(function()
+		TweenService:Create(b, TweenInfo.new(0.1), {BackgroundTransparency = 0.2}):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(b, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play()
+	end)
+	return b
+end
+
+local minBtn   = makeBtn("−", -52, Color3.fromRGB(80, 50, 70), Color3.fromRGB(255, 200, 220))
+local closeBtn = makeBtn("✕", -24, Color3.fromRGB(100, 50, 70), Color3.fromRGB(255, 180, 200))
+
+-- 内容区域
+local body = Instance.new("Frame")
+body.Size = UDim2.new(1, 0, 1, -38)
+body.Position = UDim2.new(0, 0, 0, 38)
+body.BackgroundTransparency = 1
+body.Parent = win
+
+-- 装饰分隔线
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, -24, 0, 2)
+divider.Position = UDim2.new(0, 12, 0, 0)
+divider.BackgroundColor3 = theme.accent
+divider.BackgroundTransparency = 0.5
+divider.BorderSizePixel = 0
+divider.Parent = body
+Instance.new("UICorner", divider).CornerRadius = UDim.new(1, 0)
+
+-- 主开关按钮 (粉色)
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 200, 0, 42)
+toggleBtn.Position = UDim2.new(0.5, -100, 0, 15)
+toggleBtn.BackgroundColor3 = theme.success
+toggleBtn.Text = "⚡ 启用自动攻击 ⚡"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.TextSize = 13
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.BorderSizePixel = 0
+toggleBtn.AutoButtonColor = false
+toggleBtn.Parent = body
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 10)
+
+-- 状态标签
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -24, 0, 22)
+statusLabel.Position = UDim2.new(0, 12, 0, 68)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "💖 自动攻击已启用"
+statusLabel.TextColor3 = theme.text
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = body
+
+-- 延迟提示标签
+local delayHint = Instance.new("TextLabel")
+delayHint.Size = UDim2.new(1, -24, 0, 18)
+delayHint.Position = UDim2.new(0, 12, 0, 90)
+delayHint.BackgroundTransparency = 1
+delayHint.Text = "⏱️ 延迟: 0.71s (目标HP<80时 0.53s)"
+delayHint.TextColor3 = theme.textDim
+delayHint.TextSize = 10
+delayHint.Font = Enum.Font.Gotham
+delayHint.TextXAlignment = Enum.TextXAlignment.Left
+delayHint.Parent = body
+
+-- QQ群信息 (粉色高亮)
+local qqGroup = Instance.new("TextLabel")
+qqGroup.Size = UDim2.new(1, -24, 0, 20)
+qqGroup.Position = UDim2.new(0, 12, 0, 112)
+qqGroup.BackgroundTransparency = 1
+qqGroup.Text = "💬 QQ群: 567432900"
+qqGroup.TextColor3 = theme.accentLight
+qqGroup.TextSize = 11
+qqGroup.Font = Enum.Font.GothamBold
+qqGroup.TextXAlignment = Enum.TextXAlignment.Left
+qqGroup.Parent = body
+
+-- 作者/提示信息
+local credit = Instance.new("TextLabel")
+credit.Size = UDim2.new(1, -24, 0, 16)
+credit.Position = UDim2.new(0, 12, 0, 162)
+credit.BackgroundTransparency = 1
+credit.Text = "✨ 拖动标题栏移动 | 点击 − 最小化"
+credit.TextColor3 = theme.textDim
+credit.TextSize = 9
+credit.Font = Enum.Font.Gotham
+credit.TextXAlignment = Enum.TextXAlignment.Center
+credit.Parent = body
+
+-- 更新开关UI
+local function updateToggle()
+	if enabled then
+		toggleBtn.Text = "🌸 启用中 · 自动攻击 🌸"
+		toggleBtn.BackgroundColor3 = theme.success
+		statusLabel.Text = "💖 自动攻击已启用"
+		statusLabel.TextColor3 = theme.accentLight
+		statusDot.BackgroundColor3 = theme.success
+	else
+		toggleBtn.Text = "💔 已禁用 · 点击启用 💔"
+		toggleBtn.BackgroundColor3 = theme.danger
+		statusLabel.Text = "💔 自动攻击已禁用"
+		statusLabel.TextColor3 = theme.danger
+		statusDot.BackgroundColor3 = theme.danger
+	end
+end
+
+-- 开关点击
+toggleBtn.MouseButton1Click:Connect(function()
+	enabled = not enabled
+	updateToggle()
+end)
+toggleBtn.TouchTap:Connect(function()
+	enabled = not enabled
+	updateToggle()
+end)
+
+-- 最小化逻辑
+local minimized = false
+local tweening = false
+
+local function setMinimized(val)
+	if tweening then return end
+	tweening = true
+	minimized = val
+	if not val then body.Visible = true end
+	local tween = TweenService:Create(win, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, WIN_W, 0, val and WIN_H_MIN or WIN_H_FULL)
+	})
+	tween:Play()
+	tween.Completed:Connect(function()
+		if val then body.Visible = false end
+		tweening = false
+	end)
+end
+
+minBtn.MouseButton1Click:Connect(function() setMinimized(not minimized) end)
+minBtn.TouchTap:Connect(function() setMinimized(not minimized) end)
+
+-- 关闭按钮 (淡出销毁)
+closeBtn.MouseButton1Click:Connect(function()
+	local fade = TweenService:Create(gui, TweenInfo.new(0.15), {[Enum.GuiProperty.Enabled] = false})
+	fade:Play()
+	task.delay(0.2, function() gui:Destroy() end)
+end)
+closeBtn.TouchTap:Connect(function() closeBtn.MouseButton1Click:Fire() end)
+
+-- 拖动窗口
+local dragging = false
+local dragStart, startPos
+
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = win.Position
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		win.Position = UDim2.new(
+			startPos.X.Scale, startPos.X.Offset + delta.X,
+			startPos.Y.Scale, startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- 初始化状态
+updateToggle()
+
+-- 控制台输出
+print("🌸 小照hub · 七海自动7分线 已加载 | QQ群: 567432900")
